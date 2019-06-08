@@ -6,10 +6,8 @@ import java.util.stream.Collectors;
 
 public class Main {
 
-    final static int sizeOfDictionary = 3;
-    final static int sizeOfBuffer = 3;
-    static int currentPos = 0;
-
+    final static int sizeOfDictionary = 7;
+    static int sizeOfBuffer = 3;
 
     static boolean containsChar(String s, char searchedChar) {
         if (s.length() == 0)
@@ -18,45 +16,52 @@ public class Main {
             return s.charAt(0) == searchedChar || containsChar(s.substring(1), searchedChar);
     }
 
-    static void initialInsertDictionary(Object element, ArrayList arrayList){
-        if(arrayList.size() == 0)
-            arrayList.add(' ');
-        for(int i = 0; i < arrayList.size(); i++)
-            arrayList.add(element);
+    static void UpdateDictionary(String buffer, ArrayList dictionary, int howManyElements){
+        if(dictionary.size() == 0) {
+            dictionary.add(' ');
+            for (int i = 0; i < dictionary.size(); i++)
+                dictionary.add(buffer.charAt(0)); //initialize with first element
+        } else {
+            int i = 0;
+            for (int j = 0; j < buffer.length(); j++) {
+                if(i < howManyElements) {
+                    dictionary.add(buffer.charAt(j));
+                    i++;
+                }
+            }
+        }
+
+
     }
 
-    static void UpdateBuffer(ArrayList text, ArrayList buffer){
+    static void UpdateBuffer(ArrayList text, ArrayList buffer, int howManyElements){
         int i = 0;
 
-        if (buffer.size() <= sizeOfBuffer){
+        if (text.size() != 0){
             for (Object o : text) {
-                if(i <= sizeOfBuffer) {
+                if(i < howManyElements) {
                     buffer.add(o);
                     i++;
-                    currentPos++;
                 }
             }
         }
     }
 
-    static void DeleteFromList(ArrayList array){
+    static void DeleteFromList(ArrayList array, int howManyElements){
 
         int i = 0;
 
         Iterator iter = array.iterator();
         while (iter.hasNext()) {
             Character c = (Character)iter.next();
-            if(i < currentPos) {
+            if(i < howManyElements) {
                 iter.remove();
                 i++;
             }
         }
-
-        currentPos = 0;
-
     }
 
-    static int[] GetIndexes(String text, String subStr){
+    static int[] GetOffsetsAndLengths(String text, String subStr){
 
         //int index = subStr.indexOf(text.charAt(0));
         int index = text.charAt(0);
@@ -73,17 +78,36 @@ public class Main {
             }
         }
 
-        int[] arr = Arrays.copyOfRange(array, 0, j);
+        int[] offsets = Arrays.copyOfRange(array, 0, j);
 
-        return arr;
+        int[] longestSubstring = new int[offsets.length];
+
+        for(int i = 0; i < offsets.length; i++){
+            for(int k = 0; k < subStr.length(); k++) {
+                if(text.regionMatches(0, subStr, offsets[i], k)) {
+                    longestSubstring[i] = k;
+                    continue;
+                }
+            }
+        }
+
+        int maxAt = 0;
+
+        for (int i = 0; i < longestSubstring.length; i++) {
+            maxAt = longestSubstring[i] > longestSubstring[maxAt] ? i : maxAt;
+        }
+
+        int[] offsetsAndLengths = new int[2];
+
+        offsetsAndLengths[0] = offsets[maxAt];
+        offsetsAndLengths[1] = longestSubstring[maxAt];
+
+        return offsetsAndLengths;
     }
 
 
     static boolean isAnyMatch(String buffer, String dictionary){
-        if(dictionary.indexOf(buffer.charAt(0)) != (-1))
-            return true;
-        else
-            return false;
+        return dictionary.indexOf(buffer.charAt(0)) != (-1);
     }
 
 
@@ -91,7 +115,7 @@ public class Main {
 
         final List<Output> Coder = new ArrayList<>();
 
-        String textToDecode = "javaisez";
+        String textToDecode = "ABABCDABCABCDCADABCA";
 
         LimitedSizeQueue Dictionary = new LimitedSizeQueue(sizeOfDictionary);
         LimitedSizeQueue Buffer = new LimitedSizeQueue(sizeOfBuffer);
@@ -103,57 +127,44 @@ public class Main {
                         .collect(Collectors.toList())
         );
 
-        UpdateBuffer(CharArrayList, Buffer); //Initialize buffer
+        UpdateBuffer(CharArrayList, Buffer, sizeOfBuffer+1); //Initialize buffer
 
-        initialInsertDictionary(Buffer.getFirstElement(), Dictionary); //Initialize dictionary
+        UpdateDictionary(textToDecode, Dictionary, sizeOfDictionary); //Initialize dictionary
 
-        DeleteFromList(CharArrayList);
-
-
+        DeleteFromList(CharArrayList, sizeOfBuffer+1);
 
 
-        String subString = "aaajavaju";
-
-        int[] indexArr = GetIndexes(textToDecode, subString);
-
-        for(int i = 0; i < indexArr.length; i++){
-            for(int j = 0; j < subString.length(); j++){
-                textToDecode.regionMatches(0, subString, indexArr[i], j);
-            }
-        }
-
-        //System.out.println(textToDecode.regionMatches(0, subString, 3, 4));
-
-
-
-        /*while(!Buffer.isEmpty()){
-
-            StringBuilder sb = new StringBuilder();
-            StringBuilder sb2 = new StringBuilder();
+        while(!Buffer.isEmpty()){ //compression
+            StringBuilder buf = new StringBuilder();
+            StringBuilder dic = new StringBuilder();
             for (Object ob : Buffer) {
-                sb.append(ob);
+                buf.append(ob);
             }
             for (Object ob : Dictionary) {
-                sb2.append(ob);
+                dic.append(ob);
             }
-            String newBuff = sb.toString();
-            String newDictionary = sb2.toString();
+            String newBuff = buf.toString();
+            String newDictionary = dic.toString();
+
+            int[] OffsetAndLength;
 
             if(isAnyMatch(newBuff, newDictionary)) {
-
-
-
-                //Coder.add(true,)
-            } else {
+                OffsetAndLength = GetOffsetsAndLengths(newBuff, newDictionary); //find longest substring and offset
+                DeleteFromList(Buffer, OffsetAndLength[1]);
+                UpdateBuffer(CharArrayList, Buffer, OffsetAndLength[1]); //Update Buffer with given length
+                UpdateDictionary(newBuff, Dictionary, OffsetAndLength[1]);
+                DeleteFromList(CharArrayList, OffsetAndLength[1]);
+                Coder.add(new Output(true, OffsetAndLength[0], OffsetAndLength[1]));
+            } else if(!isAnyMatch(newBuff, newDictionary)) {
                 Coder.add(new Output(false, newBuff.charAt(0))); //Return (1,c) where c = xn
                 Dictionary.add(newBuff.charAt(0)); //Update the Dictionary
-                Buffer.remove(0);   //Update the Buffer
-                UpdateBuffer(CharArrayList, Buffer);
-                DeleteFromList(CharArrayList);
+                UpdateBuffer(CharArrayList, Buffer, 1); //Update the Buffer
+                DeleteFromList(CharArrayList, 1);
             }
 
-            //System.out.println(newDictionary);
-        }*/
+          System.out.println("Dictionary: " + newDictionary + " buffer: " + newBuff);
+
+        }
 
     }
 }
