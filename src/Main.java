@@ -9,12 +9,6 @@ public class Main {
     final static int sizeOfDictionary = 7;
     static int sizeOfBuffer = 3;
 
-    static boolean containsChar(String s, char searchedChar) {
-        if (s.length() == 0)
-            return false;
-        else
-            return s.charAt(0) == searchedChar || containsChar(s.substring(1), searchedChar);
-    }
 
     static void UpdateDictionary(String buffer, ArrayList dictionary, int howManyElements){
         if(dictionary.size() == 0) {
@@ -83,7 +77,7 @@ public class Main {
         int[] longestSubstring = new int[offsets.length];
 
         for(int i = 0; i < offsets.length; i++){
-            for(int k = 0; k < subStr.length(); k++) {
+            for(int k = 0; k <= subStr.length(); k++) {
                 if(text.regionMatches(0, subStr, offsets[i], k)) {
                     longestSubstring[i] = k;
                     continue;
@@ -136,13 +130,17 @@ public class Main {
 
         while(!Buffer.isEmpty()){ //compression
             StringBuilder buf = new StringBuilder();
-            StringBuilder dic = new StringBuilder();
+
             for (Object ob : Buffer) {
                 buf.append(ob);
             }
+
+            StringBuilder dic = new StringBuilder();
+
             for (Object ob : Dictionary) {
                 dic.append(ob);
             }
+
             String newBuff = buf.toString();
             String newDictionary = dic.toString();
 
@@ -155,16 +153,56 @@ public class Main {
                 UpdateDictionary(newBuff, Dictionary, OffsetAndLength[1]);
                 DeleteFromList(CharArrayList, OffsetAndLength[1]);
                 Coder.add(new Output(true, OffsetAndLength[0], OffsetAndLength[1]));
-            } else if(!isAnyMatch(newBuff, newDictionary)) {
+            } else {
                 Coder.add(new Output(false, newBuff.charAt(0))); //Return (1,c) where c = xn
                 Dictionary.add(newBuff.charAt(0)); //Update the Dictionary
+                DeleteFromList(Buffer, 1);
                 UpdateBuffer(CharArrayList, Buffer, 1); //Update the Buffer
                 DeleteFromList(CharArrayList, 1);
+
             }
 
           System.out.println("Dictionary: " + newDictionary + " buffer: " + newBuff);
 
         }
+
+        ///////////////////////decompression
+
+
+        LimitedSizeQueue DictionaryToDecompression = new LimitedSizeQueue(sizeOfDictionary);
+
+        UpdateDictionary(textToDecode, DictionaryToDecompression, sizeOfDictionary);
+
+        StringBuilder builderDecoder = new StringBuilder();
+
+        Iterator it = Coder.iterator();
+        while (it.hasNext()) {
+
+            StringBuilder builder1 = new StringBuilder();
+
+            for (Object ob : DictionaryToDecompression) {
+                builder1.append(ob);
+            }
+            String dictionaryAsString = builder1.toString();
+
+            Output output1 = (Output) it.next();
+
+            if(output1.isMatch()) {
+                int offset = output1.getOffset();
+                int length = output1.getLength();
+                String decoder = dictionaryAsString.substring(offset, offset+length);
+                UpdateDictionary(decoder, DictionaryToDecompression, length);
+                builderDecoder.append(decoder);
+                it.remove();
+            } else {
+                DictionaryToDecompression.add(output1.getSymbol());
+                builderDecoder.append(output1.getSymbol());
+                it.remove();
+            }
+
+        }
+
+        System.out.println(builderDecoder.toString());
 
     }
 }
